@@ -1,3 +1,10 @@
+"""
+This module defines the API endpoints related to file management in the workspace.
+Author: Samuel Babot
+Date : 2026-05-15
+"""
+
+from typing import Any
 from fastapi import APIRouter
 from pathlib import Path
 
@@ -9,12 +16,13 @@ BASE_DIR = Path("sandbox/workspace")
 
 @router.get("/files")
 
-async def list_files():
+async def list_files() -> list[dict[str, Any]]:
+    """Endpoint to list files in the workspace."""
 
     # Build a recursive tree structure expected by the frontend sidebar.
-    def build_tree(path: Path):
+    def build_tree(path: Path) -> list[dict[str, Any]]:
 
-        tree = []
+        tree: list[dict[str, Any]] = []
 
         for item in path.iterdir():
 

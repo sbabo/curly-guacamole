@@ -1,5 +1,9 @@
+"""
+This module provides a simple interface to interact with a local Ollama LLM instance.
+Author: Samuel Babot
+Date : 2026-05-15
+"""
 from openai import OpenAI
-import os
 
 # OpenAI-compatible client pointing to the local Ollama endpoint.
 client = OpenAI(
@@ -12,8 +16,7 @@ Tu es un assistant IA connecté à un explorateur de fichiers.
 """
 
 def ask_llm(message: str):
-    
-    # Send system + user messages to the configured chat model.
+    """Send a message to the LLM and return its response."""
     response = client.chat.completions.create(
         model="llama3",
         messages=[
