@@ -22,11 +22,14 @@ type FileNode = {
 
 function App() {
 
+    // Chat history rendered in the main panel.
     const [messages, setMessages] = useState<Message[]>([])
+    // File tree rendered in the sidebar.
     const [files, setFiles] = useState<FileNode[]>([])
 
     useEffect(() => {
 
+        // Load sidebar files once on first render.
         async function init() {
 
             try {
@@ -47,6 +50,7 @@ function App() {
 
     async function handleSend(message: string) {
 
+        // Optimistically show the user message immediately.
         const updatedMessages: Message[] = [
             ...messages,
             {
@@ -61,6 +65,7 @@ function App() {
 
             const response = await sendMessage(message)
 
+            // Append backend reply to the conversation.
             setMessages(prev => [
                 ...prev,
                 {
@@ -77,6 +82,7 @@ function App() {
 
     return (
 
+        // Two-column layout: file tree (left) and chat panel (right).
         <div className="h-screen flex bg-slate-950 text-white">
 
             <div className="w-72 border-r border-slate-800 bg-slate-900 overflow-y-auto">

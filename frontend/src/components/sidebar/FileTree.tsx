@@ -4,6 +4,7 @@ type FileNode = {
     children?: FileNode[]
 }
 
+// Recursive tree renderer for folders and files.
 function Tree({ nodes }: { nodes: FileNode[] }) {
 
     return (
@@ -14,9 +15,11 @@ function Tree({ nodes }: { nodes: FileNode[] }) {
                 <li key={index} className="mb-2">
 
                     <div>
+                        {/* Small visual cue depending on node type. */}
                         {node.type === "folder" ? "📁" : "📄"} {node.name}
                     </div>
 
+                    {/* Render children only when the current node is a folder with content. */}
                     {node.children && (
                         <Tree nodes={node.children} />
                     )}

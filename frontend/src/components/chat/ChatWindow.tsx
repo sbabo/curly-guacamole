@@ -11,12 +11,14 @@ export default function ChatWindow({
 
     return (
 
+        // Scrollable message list rendered in chat order.
         <div className="flex-1 overflow-y-auto p-4">
 
             {messages.map((msg, index) => (
 
                 <div
                     key={index}
+                    // Different text color for user vs assistant messages.
                     className={`mb-4 ${
                         msg.role === "user"
                             ? "text-blue-400"
@@ -24,6 +26,7 @@ export default function ChatWindow({
                     }`}
                 >
                     <strong>
+                        {/* Label each message with its source. */}
                         {msg.role === "user" ? "Vous" : "LLM"}
                     </strong>
 
