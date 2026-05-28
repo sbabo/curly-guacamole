@@ -5,9 +5,9 @@ type Message = {
 
 export default function ChatWindow({
     messages
-}: {
+}: Readonly<{
     messages: Message[]
-}) {
+}>) {
 
     return (
 
@@ -17,20 +17,23 @@ export default function ChatWindow({
             {messages.map((msg, index) => (
 
                 <div
-                    key={index}
-                    // Different text color for user vs assistant messages.
-                    className={`mb-4 ${
-                        msg.role === "user"
-                            ? "text-blue-400"
-                            : "text-green-400"
+                    key={msg.role + msg.content + index}
+                    className={`mb-4 flex ${
+                        msg.role === "user" ? "justify-end" : "justify-start"
                     }`}
                 >
-                    <strong>
-                        {/* Label each message with its source. */}
-                        {msg.role === "user" ? "Vous" : "LLM"}
-                    </strong>
-
-                    <p>{msg.content}</p>
+                    <div
+                        className={`max-w-[80%] rounded-2xl border px-4 py-3 shadow-lg ${
+                            msg.role === "user"
+                                ? "border-sky-400/30 bg-sky-400/10 text-sky-50"
+                                : "border-emerald-400/20 bg-emerald-400/10 text-emerald-50"
+                        }`}
+                    >
+                        <div className="mb-1 text-[10px] uppercase tracking-[0.28em] opacity-70">
+                            {msg.role === "user" ? "Vous" : "Assistant"}
+                        </div>
+                        <p className="whitespace-pre-wrap leading-6">{msg.content}</p>
+                    </div>
 
                 </div>
             ))}
