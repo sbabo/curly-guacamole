@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 
-import ChatInput from "./components/chat/ChatInput"
-import ChatWindow from "./components/chat/ChatWindow"
-import FileTree from "./components/sidebar/FileTree"
+import ChatInput from "../components/chat/ChatInput"
+import ChatWindow from "../components/chat/ChatWindow"
+import FileTree from "../components/sidebar/FileTree"
 
 import {
     answerIngestionQuestion,
@@ -16,7 +16,7 @@ import {
     type ExtractionField,
     type DocumentItem,
     type IngestJobSnapshot,
-} from "./services/api"
+} from "../services/api"
 
 type Message = {
     id: string
@@ -34,7 +34,7 @@ function createMessage(role: string, content: string): Message {
 
 function App() {
 
-    // Chat history rendered in the main panel.
+    // Historique du chat affiché dans le panneau principal.
     const [messages, setMessages] = useState<Message[]>([])
     // Documents provisoires et définitifs pour la sidebar.
     const [documents, setDocuments] = useState<DocumentItem[]>([])
@@ -46,6 +46,7 @@ function App() {
     const [draftDetectedType, setDraftDetectedType] = useState("")
     const [draftMandatoryFields, setDraftMandatoryFields] = useState<ExtractionField[]>([])
     const [draftOptionalFields, setDraftOptionalFields] = useState<ExtractionField[]>([])
+    // Références servant à éviter les doublons de messages lors du stream d'ingestion.
     const lastJobMessageRef = useRef("")
     const lastQuestionRef = useRef("")
     const cleanupStreamRef = useRef<(() => void) | null>(null)
@@ -72,6 +73,7 @@ function App() {
     }, [])
 
     useEffect(() => {
+        // Synchronise le brouillon éditable avec l'état du job actif.
         if (!activeJob) {
             setDraftDetectedType("")
             setDraftMandatoryFields([])
@@ -85,6 +87,7 @@ function App() {
     }, [activeJob?.detected_type, activeJob?.mandatory_fields, activeJob?.optional_fields])
 
     useEffect(() => {
+        // Coupe proprement le flux SSE au démontage du composant.
         return () => {
             cleanupStreamRef.current?.()
         }
@@ -95,6 +98,7 @@ function App() {
             return undefined
         }
 
+        // Abonne le front aux événements d'ingestion du job courant.
         cleanupStreamRef.current?.()
         cleanupStreamRef.current = subscribeIngestionEvents(
             activeJob.job_id,
@@ -140,6 +144,7 @@ function App() {
 
     async function refreshDocuments() {
 
+        // Recharge la liste affichée après upload / confirmation.
         const data = await fetchDocuments()
         setDocuments(data)
     }
@@ -148,6 +153,7 @@ function App() {
 
         try {
 
+            // Upload dans le dossier provisoire, puis rafraîchissement de la sidebar.
             const uploaded = await uploadDocument(file)
 
             setSelectedTmpPath(uploaded.relative_path)
@@ -279,11 +285,13 @@ function App() {
         key: "field_name" | "field_value",
         value: string,
     ) {
+        // Met à jour une ligne du brouillon (obligatoire ou facultatif) sans muter l'état.
         const updater = section === "mandatory" ? setDraftMandatoryFields : setDraftOptionalFields
         updater((prev) => prev.map((item, i) => (i === index ? { ...item, [key]: value } : item)))
     }
 
     function addDraftField(section: "mandatory" | "optional") {
+        // Ajoute une nouvelle paire clé/valeur vide dans le brouillon.
         const updater = section === "mandatory" ? setDraftMandatoryFields : setDraftOptionalFields
         updater((prev) => [...prev, { field_name: "", field_value: "" }])
     }
@@ -295,6 +303,7 @@ function App() {
         try {
             setIsIngestionBusy(true)
 
+            // Évite d'envoyer des champs sans clé au backend.
             const cleanedMandatory = draftMandatoryFields.filter((field) => field.field_name.trim())
             const cleanedOptional = draftOptionalFields.filter((field) => field.field_name.trim())
 
@@ -319,7 +328,7 @@ function App() {
 
     async function handleSend(message: string) {
 
-        // Optimistically show the user message immediately.
+        // Affichage optimiste du message utilisateur avant la réponse backend.
         const updatedMessages: Message[] = [
             ...messages,
             createMessage("user", message)
@@ -331,7 +340,7 @@ function App() {
 
             const response = await sendSearchMessage(message)
 
-            // Append backend reply to the conversation.
+            // Ajoute la réponse backend à la conversation.
             setMessages(prev => [
                 ...prev,
                 createMessage("assistant", response.reply ?? "Réponse indisponible")
@@ -345,7 +354,7 @@ function App() {
 
     return (
 
-        // Two-column layout: file tree (left) and chat panel (right).
+        // Layout principal en deux colonnes : arborescence à gauche, chat à droite.
         <div className="h-screen flex bg-slate-950 text-white">
 
             <div className="w-72 border-r border-slate-800 bg-slate-900 overflow-y-auto">

@@ -24,6 +24,7 @@ export default function FileTree({
                 Documents
             </h2>
 
+            {/* Upload d'un document vers l'espace provisoire. */}
             <label className="inline-flex items-center justify-center rounded bg-blue-600 px-3 py-2 text-sm font-medium hover:bg-blue-500 cursor-pointer">
                 <span>Ajouter un document</span>
                 <input
@@ -38,6 +39,7 @@ export default function FileTree({
                 />
             </label>
 
+            {/* Lance l'ingestion sur le document provisoire sélectionné. */}
             <button
                 className="w-full rounded border border-slate-600 px-3 py-2 text-sm font-medium hover:bg-slate-800 disabled:opacity-40"
                 onClick={onStartIngestion}
@@ -62,6 +64,7 @@ export default function FileTree({
                                 className="w-full text-left"
                                 disabled={!isTmp}
                                 onClick={() => {
+                                    // Seuls les documents provisoires peuvent être choisis pour ingestion.
                                     if (!isTmp) return
                                     onSelectTmp(document.relative_path)
                                 }}

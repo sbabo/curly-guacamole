@@ -6,15 +6,15 @@ export default function ChatInput({
     onSend: (message: string) => void
 }>) {
 
-    // Local state for the message currently typed by the user.
+    // État local du message en cours de saisie.
     const [message, setMessage] = useState("")
 
     function submit() {
 
-        // Prevent sending empty messages.
+        // Empêche l'envoi de messages vides.
         if (!message) return
 
-        // Send the message to the parent component, then clear the input.
+        // Envoie le message au composant parent, puis vide l'input.
         onSend(message)
 
         setMessage("")
@@ -25,7 +25,7 @@ export default function ChatInput({
         <div className="flex gap-3 border-t border-slate-800 bg-slate-950/70 p-4 backdrop-blur">
 
             <input
-                // Controlled input bound to local state.
+                // Input contrôlé, lié au state local.
                 className="flex-1 rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-amber-400/60"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}

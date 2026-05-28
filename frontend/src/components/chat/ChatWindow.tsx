@@ -11,7 +11,7 @@ export default function ChatWindow({
 
     return (
 
-        // Scrollable message list rendered in chat order.
+        // Liste de messages scrollable, affichée dans l'ordre de conversation.
         <div className="flex-1 overflow-y-auto p-4">
 
             {messages.map((msg, index) => (
