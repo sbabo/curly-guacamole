@@ -35,6 +35,7 @@ export default function ChatInput({
             <button
                 className="rounded-2xl bg-amber-400 px-5 font-semibold text-slate-950 transition hover:bg-amber-300"
                 onClick={submit}
+                type="button"
             >
                 Envoyer
             </button>
