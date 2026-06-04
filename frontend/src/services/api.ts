@@ -205,9 +205,13 @@ export function subscribeIngestionEvents(
     let lastStatus: IngestJobStatus | null = null
 
     source.addEventListener("progress", (event: MessageEvent) => {
-        const payload = JSON.parse(event.data)
-        lastStatus = payload.status
-        onUpdate(payload)
+        try {
+            const payload = JSON.parse(event.data) as IngestJobSnapshot
+            lastStatus = payload.status
+            onUpdate(payload)
+        } catch {
+            onError?.("Payload SSE invalide.")
+        }
     })
 
     source.onerror = () => {
