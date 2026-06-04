@@ -21,7 +21,7 @@ describe('FileTree', () => {
     expect(screen.getByRole('button', { name: 'Démarrer ingestion' })).toHaveProperty('disabled', true)
   })
 
-  // Vérifie que le bouton de démarrage est désactivé lorsque l'ingestion est en cours.
+  // Vérifie que seuls les documents provisoires peuvent être sélectionnés pour l'ingestion.
   it('autorise la sélection uniquement des documents provisoires', async () => {
     const user = userEvent.setup()
     const onSelectTmp = vi.fn()
