@@ -66,11 +66,28 @@ describe('App (POC)', () => {
     })
     sendSearchMessageMock.mockResolvedValue({ reply: 'ok' })
     updateIngestionDraftMock.mockResolvedValue({ job: null })
+    window.localStorage.clear()
+  })
+
+  async function loginAs(user: ReturnType<typeof userEvent.setup>, login: string) {
+    await user.type(screen.getByLabelText('Identifiant'), login)
+    await user.click(screen.getByRole('button', { name: 'Se connecter' }))
+  }
+
+  it('affiche l ecran de connexion avant le chat', () => {
+    render(<App />)
+
+    expect(screen.getByRole('heading', { name: 'Authentification requise' })).toBeInTheDocument()
+    expect(fetchDocumentsMock).not.toHaveBeenCalled()
   })
 
   // Vérifie que les documents sont chargés au montage du composant.
   it('charge les documents au montage', async () => {
+    const user = userEvent.setup()
+
     render(<App />)
+
+    await loginAs(user, 'alice')
 
     await waitFor(() => {
       expect(fetchDocumentsMock).toHaveBeenCalledTimes(1)
@@ -82,6 +99,8 @@ describe('App (POC)', () => {
     const user = userEvent.setup()
 
     render(<App />)
+
+    await loginAs(user, 'alice')
 
     const input = document.querySelector('input[type="file"]')
     if (!(input instanceof HTMLInputElement)) {

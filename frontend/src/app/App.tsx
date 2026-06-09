@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 
 import ChatInput from "../components/chat/ChatInput"
 import ChatWindow from "../components/chat/ChatWindow"
@@ -18,6 +18,8 @@ import {
     type IngestJobSnapshot,
 } from "../services/api"
 
+const AUTH_STORAGE_KEY = "intelliged_auth_user"
+
 type Message = {
     id: string
     role: string
@@ -33,6 +35,12 @@ function createMessage(role: string, content: string): Message {
 }
 
 function App() {
+
+    const [authenticatedUser, setAuthenticatedUser] = useState(() =>
+        window.localStorage.getItem(AUTH_STORAGE_KEY)
+    )
+    const [loginValue, setLoginValue] = useState("")
+    const [loginError, setLoginError] = useState("")
 
     // Historique du chat affiché dans le panneau principal.
     const [messages, setMessages] = useState<Message[]>([])
@@ -52,6 +60,9 @@ function App() {
     const cleanupStreamRef = useRef<(() => void) | null>(null)
 
     useEffect(() => {
+        if (!authenticatedUser) {
+            return
+        }
 
         // Charge les documents visibles dans la sidebar au premier rendu.
         async function init() {
@@ -70,7 +81,7 @@ function App() {
 
         init()
 
-    }, [])
+    }, [authenticatedUser])
 
     useEffect(() => {
         // Synchronise le brouillon éditable avec l'état du job actif.
@@ -352,6 +363,79 @@ function App() {
         }
     }
 
+    function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault()
+
+        const normalizedLogin = loginValue.trim()
+
+        if (!normalizedLogin) {
+            setLoginError("Merci de renseigner un identifiant pour continuer.")
+            return
+        }
+
+        window.localStorage.setItem(AUTH_STORAGE_KEY, normalizedLogin)
+        setAuthenticatedUser(normalizedLogin)
+        setLoginError("")
+        setLoginValue("")
+    }
+
+    function handleLogout() {
+        window.localStorage.removeItem(AUTH_STORAGE_KEY)
+        setAuthenticatedUser(null)
+        setMessages([])
+        setDocuments([])
+        setSelectedTmpPath(null)
+        setActiveJob(null)
+        setIngestionAnswer("")
+        setIsIngestionBusy(false)
+        setIsEditingDraft(false)
+        setDraftDetectedType("")
+        setDraftMandatoryFields([])
+        setDraftOptionalFields([])
+        setLoginError("")
+    }
+
+    if (!authenticatedUser) {
+        return (
+            <div className="min-h-screen bg-slate-950 px-4 py-8 text-slate-100">
+                <div className="mx-auto mt-10 max-w-md rounded-3xl border border-slate-800 bg-slate-900/90 p-8 shadow-[0_30px_120px_rgba(15,23,42,0.55)]">
+                    <div className="text-xs uppercase tracking-[0.3em] text-amber-300/80">Intelli'GED</div>
+                    <h1 className="mt-2 text-2xl font-bold text-white">Authentification requise</h1>
+                    <p className="mt-3 text-sm leading-6 text-slate-300">
+                        Connecte-toi pour acceder a l'espace de chat et au suivi d'ingestion documentaire.
+                    </p>
+
+                    <form className="mt-6 space-y-4" onSubmit={handleLoginSubmit}>
+                        <div className="space-y-2">
+                            <label htmlFor="login" className="text-sm text-slate-200">Identifiant</label>
+                            <input
+                                id="login"
+                                value={loginValue}
+                                onChange={(event) => setLoginValue(event.target.value)}
+                                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none placeholder:text-slate-500 focus:border-amber-400/70"
+                                placeholder="prenom.nom"
+                                autoComplete="username"
+                            />
+                        </div>
+
+                        {loginError && (
+                            <div className="rounded-xl border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-sm text-rose-100">
+                                {loginError}
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            className="w-full rounded-xl bg-amber-400 px-4 py-2 font-semibold text-slate-950 transition hover:bg-amber-300"
+                        >
+                            Se connecter
+                        </button>
+                    </form>
+                </div>
+            </div>
+        )
+    }
+
     return (
 
         // Layout principal en deux colonnes : arborescence à gauche, chat à droite.
@@ -372,7 +456,19 @@ function App() {
             <div className="flex-1 flex flex-col">
 
                 <div className="border-b border-slate-800 p-4 font-bold">
-                    Intelli'GED — Reprenez le pouvoir sur vos documents...
+                    <div className="flex items-center justify-between gap-3">
+                        <span>Intelli'GED - Reprenez le pouvoir sur vos documents...</span>
+                        <div className="flex items-center gap-3 text-sm font-normal text-slate-300">
+                            <span className="hidden sm:inline">Connecte: {authenticatedUser}</span>
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                                className="rounded-lg border border-slate-600 px-3 py-1 text-xs uppercase tracking-[0.18em] transition hover:border-amber-300 hover:text-amber-100"
+                            >
+                                Deconnexion
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {activeJob && (
