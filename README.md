@@ -1,6 +1,6 @@
 # curly-guacamole
 
-> [Retour au README racine](../README.md)
+> [Retour au README racine](../README.md#front-end)
 
 [![React](https://img.shields.io/badge/React-supported-61DAFB.svg)](https://react.dev/)
 
@@ -82,4 +82,4 @@ export default defineConfig([
 ])
 ```
 
-> [Retour au README racine](../README.md)
+> [Retour au README racine](../README.md#front-end)
