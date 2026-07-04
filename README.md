@@ -17,6 +17,27 @@ Pour le test de l'archi et du concept, nous avons choisi de développer un POC d
 
 Le projet est lancé par le script bash `./install.sh` et il suffit de lancer `http://localhost:5173` dans une fenêtre de navigateur pour y accéder dans l'attente du développement de l'application de bureau.
 
+## Arrêt du projet
+
+Pour trouver le PID du processus et l'arrêter, vous pouvez utiliser la commande suivante :
+
+```bash
+lsof -i :5173
+```
+
+Vous aurez une sortie similaire à celle-ci :
+
+```tty
+COMMAND   PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+MainThrea 18054 user   20u  IPv4 123456      0t0  TCP *:5173 (LISTEN)
+```
+
+Vous pouvez ensuite arrêter le processus en utilisant la commande `kill` avec le PID trouvé :
+
+```bash
+kill 18054
+```
+
 ## React Compiler
 
 Le compileur React n'est pas uitlisable pour ce template à cause de son impacte performance sur le build & dev. Pour l'ajouter, aller sur [cette documentation](https://react.dev/learn/react-compiler/installation).

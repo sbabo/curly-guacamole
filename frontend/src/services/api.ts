@@ -1,5 +1,16 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/v1/guacamol"
 
+function getHeaders(extraHeaders: HeadersInit = {}): HeadersInit {
+    const token = localStorage.getItem('token')
+    const headers: Record<string, string> = {
+        ...extraHeaders as Record<string, string>
+    }
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+    }
+    return headers
+}
+
 async function readJsonResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
         const fallback = `Requête échouée (${response.status})`
@@ -104,9 +115,9 @@ export async function sendSearchMessage(message: string): Promise<{ reply?: stri
 
     const response = await fetch(`${API_URL}/chat/search`, {
         method: "POST",
-        headers: {
+        headers: getHeaders({
             "Content-Type": "application/json"
-        },
+        }),
         body: JSON.stringify({
             message
         })
@@ -117,7 +128,9 @@ export async function sendSearchMessage(message: string): Promise<{ reply?: stri
 
 export async function fetchDocuments(): Promise<DocumentItem[]> {
 
-    const response = await fetch(`${API_URL}/documents`)
+    const response = await fetch(`${API_URL}/documents`, {
+        headers: getHeaders()
+    })
     const data = await readJsonResponse<{ documents?: DocumentItem[] }>(response)
 
     return data.documents ?? []
@@ -130,6 +143,7 @@ export async function uploadDocument(file: File): Promise<DocumentItem> {
 
     const response = await fetch(`${API_URL}/documents/upload`, {
         method: "POST",
+        headers: getHeaders(),
         body: formData
     })
 
@@ -141,9 +155,9 @@ export async function startIngestionFromUpload(relativeTmpPath: string): Promise
 
     const response = await fetch(`${API_URL}/ingest/from-upload/start`, {
         method: "POST",
-        headers: {
+        headers: getHeaders({
             "Content-Type": "application/json"
-        },
+        }),
         body: JSON.stringify({
             relative_tmp_path: relativeTmpPath
         })
@@ -155,9 +169,9 @@ export async function startIngestionFromUpload(relativeTmpPath: string): Promise
 export async function answerIngestionQuestion(sessionId: string, answer: string): Promise<IngestAnswerResult> {
     const response = await fetch(`${API_URL}/ingest/${sessionId}/answer`, {
         method: "POST",
-        headers: {
+        headers: getHeaders({
             "Content-Type": "application/json"
-        },
+        }),
         body: JSON.stringify({
             answer
         })
@@ -172,9 +186,9 @@ export async function confirmIngestion(
 ): Promise<IngestConfirmResult> {
     const response = await fetch(`${API_URL}/ingest/${sessionId}/confirm`, {
         method: "POST",
-        headers: {
+        headers: getHeaders({
             "Content-Type": "application/json"
-        },
+        }),
         body: JSON.stringify(payload)
     })
 
@@ -187,9 +201,9 @@ export async function updateIngestionDraft(
 ): Promise<IngestJobResponse> {
     const response = await fetch(`${API_URL}/ingest/${sessionId}/draft`, {
         method: "POST",
-        headers: {
+        headers: getHeaders({
             "Content-Type": "application/json"
-        },
+        }),
         body: JSON.stringify(payload)
     })
 
@@ -201,7 +215,12 @@ export function subscribeIngestionEvents(
     onUpdate: (job: IngestJobSnapshot) => void,
     onError?: (message: string) => void,
 ) {
-    const source = new EventSource(`${API_URL}/ingest/${sessionId}/events`)
+    const token = localStorage.getItem('token')
+    const url = new URL(`${API_URL}/ingest/${sessionId}/events`)
+    if (token) {
+        url.searchParams.set('token', token)
+    }
+    const source = new EventSource(url.toString())
     let lastStatus: IngestJobStatus | null = null
 
     source.addEventListener("progress", (event: MessageEvent) => {

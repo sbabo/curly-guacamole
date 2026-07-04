@@ -4,6 +4,8 @@ import ChatInput from "../components/chat/ChatInput"
 import ChatWindow from "../components/chat/ChatWindow"
 import IngestionProgressCard from "../components/ingestion/IngestionProgressCard"
 import FileTree from "../components/sidebar/FileTree"
+import { useAuth } from "../hooks/useAuth"
+import LoginPage from "../pages/LoginPage"
 
 import {
     answerIngestionQuestion,
@@ -34,6 +36,7 @@ function createMessage(role: string, content: string): Message {
 }
 
 function App() {
+    const { token, login, logout } = useAuth()
 
     // Historique du chat affiché dans le panneau principal.
     const [messages, setMessages] = useState<Message[]>([])
@@ -353,6 +356,10 @@ function App() {
         }
     }
 
+    if (!token) {
+        return <LoginPage onLoginSuccess={login} />
+    }
+
     return (
 
         // Layout principal en deux colonnes : arborescence à gauche, chat à droite.
@@ -396,6 +403,15 @@ function App() {
                         onDetectedTypeChange={setDraftDetectedType}
                     />
                 )}
+
+                <div className="flex justify-end p-4 border-b border-slate-800">
+                    <button 
+                        onClick={logout}
+                        className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-md transition-colors"
+                    >
+                        Se déconnecter
+                    </button>
+                </div>
 
                 <ChatWindow messages={messages} />
 
