@@ -5,7 +5,11 @@ import ChatWindow from "../components/chat/ChatWindow"
 import IngestionProgressCard from "../components/ingestion/IngestionProgressCard"
 import FileTree from "../components/sidebar/FileTree"
 import { useAuth } from "../hooks/useAuth"
+import AdminUsersPage from "../pages/AdminUsersPage"
+import FirstUserPage from "../pages/FirstUserPage"
 import LoginPage from "../pages/LoginPage"
+import { fetchCurrentUserRights } from "../services/administration"
+import { fetchFirstUserStatus } from "../services/auth"
 
 import {
     answerIngestionQuestion,
@@ -21,11 +25,16 @@ import {
     type IngestJobSnapshot,
 } from "../services/api"
 
+import "../styles/access.css"
+
 type Message = {
     id: string
     role: string
     content: string
 }
+
+type BootstrapState = "loading" | "first-user" | "login"
+type WorkspaceView = "chat" | "admin"
 
 function createMessage(role: string, content: string): Message {
     return {
@@ -37,10 +46,10 @@ function createMessage(role: string, content: string): Message {
 
 function App() {
     const { token, login, logout } = useAuth()
-
-    // Historique du chat affiché dans le panneau principal.
+    const [bootstrapState, setBootstrapState] = useState<BootstrapState>("loading")
+    const [canManageUsers, setCanManageUsers] = useState(false)
+    const [activeView, setActiveView] = useState<WorkspaceView>("chat")
     const [messages, setMessages] = useState<Message[]>([])
-    // Documents provisoires et définitifs pour la sidebar.
     const [documents, setDocuments] = useState<DocumentItem[]>([])
     const [selectedTmpPath, setSelectedTmpPath] = useState<string | null>(null)
     const [activeJob, setActiveJob] = useState<IngestJobSnapshot | null>(null)
@@ -50,34 +59,101 @@ function App() {
     const [draftDetectedType, setDraftDetectedType] = useState("")
     const [draftMandatoryFields, setDraftMandatoryFields] = useState<ExtractionField[]>([])
     const [draftOptionalFields, setDraftOptionalFields] = useState<ExtractionField[]>([])
-    // Références servant à éviter les doublons de messages lors du stream d'ingestion.
     const lastJobMessageRef = useRef("")
     const lastQuestionRef = useRef("")
     const cleanupStreamRef = useRef<(() => void) | null>(null)
 
     useEffect(() => {
+        let isMounted = true
 
-        // Charge les documents visibles dans la sidebar au premier rendu.
         async function init() {
-
             try {
-
-                const data = await fetchDocuments()
-
-                setDocuments(data)
-
-            } catch (err) {
-
-                console.error(err)
+                const hasUsers = await fetchFirstUserStatus()
+                if (isMounted) {
+                    setBootstrapState(hasUsers ? "login" : "first-user")
+                }
+            } catch (error) {
+                console.error(error)
+                if (isMounted) {
+                    setBootstrapState("login")
+                }
             }
         }
 
-        init()
+        void init()
 
+        return () => {
+            isMounted = false
+        }
     }, [])
 
     useEffect(() => {
-        // Synchronise le brouillon éditable avec l'état du job actif.
+        if (!token) {
+            setCanManageUsers(false)
+            setActiveView("chat")
+            setMessages([])
+            setDocuments([])
+            setSelectedTmpPath(null)
+            setActiveJob(null)
+            setIngestionAnswer("")
+            setIsIngestionBusy(false)
+            setIsEditingDraft(false)
+            setDraftDetectedType("")
+            setDraftMandatoryFields([])
+            setDraftOptionalFields([])
+            cleanupStreamRef.current?.()
+            cleanupStreamRef.current = null
+            return
+        }
+
+        let isMounted = true
+
+        async function loadRights() {
+            try {
+                const rights = await fetchCurrentUserRights()
+                if (!isMounted) {
+                    return
+                }
+
+                setCanManageUsers(rights.can_manage_users)
+                if (!rights.can_manage_users) {
+                    setActiveView("chat")
+                }
+            } catch (error) {
+                console.error(error)
+                if (isMounted) {
+                    logout()
+                    setCanManageUsers(false)
+                    setActiveView("chat")
+                }
+            }
+        }
+
+        void loadRights()
+
+        return () => {
+            isMounted = false
+        }
+    }, [logout, token])
+
+    useEffect(() => {
+        if (!token) {
+            return
+        }
+
+        async function init() {
+            try {
+                const data = await fetchDocuments()
+                setDocuments(data)
+            } catch (error) {
+                console.error(error)
+            }
+        }
+
+        void init()
+    }, [token])
+
+    useEffect(() => {
         if (!activeJob) {
             setDraftDetectedType("")
             setDraftMandatoryFields([])
@@ -91,7 +167,6 @@ function App() {
     }, [activeJob?.detected_type, activeJob?.mandatory_fields, activeJob?.optional_fields])
 
     useEffect(() => {
-        // Coupe proprement le flux SSE au démontage du composant.
         return () => {
             cleanupStreamRef.current?.()
         }
@@ -102,7 +177,6 @@ function App() {
             return undefined
         }
 
-        // Abonne le front aux événements d'ingestion du job courant.
         cleanupStreamRef.current?.()
         cleanupStreamRef.current = subscribeIngestionEvents(
             activeJob.job_id,
@@ -111,32 +185,20 @@ function App() {
 
                 if (job.message && job.message !== lastJobMessageRef.current) {
                     lastJobMessageRef.current = job.message
-                    setMessages(prev => [
-                        ...prev,
-                        createMessage("assistant", job.message),
-                    ])
+                    setMessages((prev) => [...prev, createMessage("assistant", job.message)])
                 }
 
                 if (job.next_question && job.next_question !== lastQuestionRef.current) {
                     lastQuestionRef.current = job.next_question
-                    setMessages(prev => [
-                        ...prev,
-                        createMessage("assistant", job.next_question ?? ""),
-                    ])
+                    setMessages((prev) => [...prev, createMessage("assistant", job.next_question ?? "")])
                 }
 
                 if (job.error) {
-                    setMessages(prev => [
-                        ...prev,
-                        createMessage("assistant", job.error ?? ""),
-                    ])
+                    setMessages((prev) => [...prev, createMessage("assistant", job.error ?? "")])
                 }
             },
             (errorMessage) => {
-                setMessages(prev => [
-                    ...prev,
-                    createMessage("assistant", errorMessage),
-                ])
+                setMessages((prev) => [...prev, createMessage("assistant", errorMessage)])
             }
         )
 
@@ -147,38 +209,26 @@ function App() {
     }, [activeJob?.job_id])
 
     async function refreshDocuments() {
-
-        // Recharge la liste affichée après upload / confirmation.
         const data = await fetchDocuments()
         setDocuments(data)
     }
 
     async function handleUpload(file: File) {
-
         try {
-
-            // Upload dans le dossier provisoire, puis rafraîchissement de la sidebar.
             const uploaded = await uploadDocument(file)
 
             setSelectedTmpPath(uploaded.relative_path)
             await refreshDocuments()
-            setMessages(prev => [
-                ...prev,
-                createMessage("assistant", `Document ajouté en provisoire: ${uploaded.name}`),
-            ])
-
-        } catch (err) {
-
-            console.error(err)
+            setMessages((prev) => [...prev, createMessage("assistant", `Document ajouté en provisoire: ${uploaded.name}`)])
+        } catch (error) {
+            console.error(error)
         }
     }
 
     async function handleStartIngestion() {
-
         if (!selectedTmpPath) return
 
         try {
-
             setIsIngestionBusy(true)
 
             const response = await startIngestionFromUpload(selectedTmpPath)
@@ -186,32 +236,27 @@ function App() {
             lastJobMessageRef.current = response.job.message
             lastQuestionRef.current = ""
 
-            setMessages(prev => [
+            setMessages((prev) => [
                 ...prev,
                 createMessage("assistant", "Le traitement d'ingestion a démarré. Je te tiens au courant dès que l'extraction est prête."),
             ])
-
-        } catch (err) {
-
-            console.error(err)
+        } catch (error) {
+            console.error(error)
         } finally {
-
             setIsIngestionBusy(false)
         }
     }
 
     async function handleAnswerIngestion() {
-
         const sessionId = activeJob?.session_id ?? activeJob?.job_id
         if (!sessionId || !ingestionAnswer.trim()) return
 
         try {
-
             setIsIngestionBusy(true)
 
             const response = await answerIngestionQuestion(sessionId, ingestionAnswer.trim())
 
-            setActiveJob(prev => prev ? {
+            setActiveJob((prev) => prev ? {
                 ...prev,
                 status: response.status === "ready_to_index" ? "ready_for_validation" : "waiting_user_input",
                 mandatory_fields: response.mandatory_fields,
@@ -222,27 +267,22 @@ function App() {
 
             setIngestionAnswer("")
 
-            setMessages(prev => [
+            setMessages((prev) => [
                 ...prev,
                 createMessage("assistant", response.next_question ? response.next_question : "Merci, l'extraction continue."),
             ])
-
-        } catch (err) {
-
-            console.error(err)
+        } catch (error) {
+            console.error(error)
         } finally {
-
             setIsIngestionBusy(false)
         }
     }
 
     async function handleConfirmIngestion() {
-
         const sessionId = activeJob?.session_id ?? activeJob?.job_id
         if (!sessionId || !selectedTmpPath) return
 
         try {
-
             setIsIngestionBusy(true)
 
             const fileName = selectedTmpPath.split("/").pop() ?? "document"
@@ -258,7 +298,7 @@ function App() {
                 user_id: 3,
             })
 
-            setActiveJob(prev => prev ? {
+            setActiveJob((prev) => prev ? {
                 ...prev,
                 status: "indexed",
                 message: "Document indexé avec succès.",
@@ -267,18 +307,15 @@ function App() {
                 embedding_ids: result.ingest.embedding_ids,
             } : prev)
 
-            setMessages(prev => [
+            setMessages((prev) => [
                 ...prev,
                 createMessage("assistant", `Indexation terminée pour ${result.final_relative_path}`),
             ])
 
             await refreshDocuments()
-
-        } catch (err) {
-
-            console.error(err)
+        } catch (error) {
+            console.error(error)
         } finally {
-
             setIsIngestionBusy(false)
         }
     }
@@ -289,13 +326,11 @@ function App() {
         key: "field_name" | "field_value",
         value: string,
     ) {
-        // Met à jour une ligne du brouillon (obligatoire ou facultatif) sans muter l'état.
         const updater = section === "mandatory" ? setDraftMandatoryFields : setDraftOptionalFields
         updater((prev) => prev.map((item, i) => (i === index ? { ...item, [key]: value } : item)))
     }
 
     function addDraftField(section: "mandatory" | "optional") {
-        // Ajoute une nouvelle paire clé/valeur vide dans le brouillon.
         const updater = section === "mandatory" ? setDraftMandatoryFields : setDraftOptionalFields
         updater((prev) => [...prev, { field_name: "", field_value: "" }])
     }
@@ -307,7 +342,6 @@ function App() {
         try {
             setIsIngestionBusy(true)
 
-            // Évite d'envoyer des champs sans clé au backend.
             const cleanedMandatory = draftMandatoryFields.filter((field) => field.field_name.trim())
             const cleanedOptional = draftOptionalFields.filter((field) => field.field_name.trim())
 
@@ -318,53 +352,55 @@ function App() {
             })
 
             setActiveJob(response.job)
-            setMessages((prev) => [
-                ...prev,
-                createMessage("assistant", "Le brouillon a été mis à jour."),
-            ])
+            setMessages((prev) => [...prev, createMessage("assistant", "Le brouillon a été mis à jour.")])
             setIsEditingDraft(false)
-        } catch (err) {
-            console.error(err)
+        } catch (error) {
+            console.error(error)
         } finally {
             setIsIngestionBusy(false)
         }
     }
 
     async function handleSend(message: string) {
-
-        // Affichage optimiste du message utilisateur avant la réponse backend.
-        const updatedMessages: Message[] = [
-            ...messages,
-            createMessage("user", message)
-        ]
-
+        const updatedMessages: Message[] = [...messages, createMessage("user", message)]
         setMessages(updatedMessages)
 
         try {
-
             const response = await sendSearchMessage(message)
-
-            // Ajoute la réponse backend à la conversation.
-            setMessages(prev => [
-                ...prev,
-                createMessage("assistant", response.reply ?? "Réponse indisponible")
-            ])
-
-        } catch (err) {
-
-            console.error(err)
+            setMessages((prev) => [...prev, createMessage("assistant", response.reply ?? "Réponse indisponible")])
+        } catch (error) {
+            console.error(error)
         }
+    }
+
+    if (bootstrapState === "loading") {
+        return (
+            <main className="screen-shell">
+                <section className="screen-panel screen-panel--narrow">
+                    <div className="screen-hero">
+                        <span className="screen-kicker">Intelli'GED</span>
+                        <h1 className="screen-title" style={{ fontSize: "2.3rem" }}>Préparation de l'espace de travail</h1>
+                        <p className="screen-copy">Vérification de l'état du premier utilisateur et des droits d'accès.</p>
+                    </div>
+                </section>
+            </main>
+        )
+    }
+
+    if (!token && bootstrapState === "first-user") {
+        return <FirstUserPage onCreated={() => setBootstrapState("login")} />
     }
 
     if (!token) {
         return <LoginPage onLoginSuccess={login} />
     }
 
+    if (activeView === "admin" && canManageUsers) {
+        return <AdminUsersPage onBack={() => setActiveView("chat")} onLogout={logout} />
+    }
+
     return (
-
-        // Layout principal en deux colonnes : arborescence à gauche, chat à droite.
         <div className="h-screen flex bg-slate-950 text-white">
-
             <div className="w-72 border-r border-slate-800 bg-slate-900 overflow-y-auto">
                 <FileTree
                     documents={documents}
@@ -374,13 +410,27 @@ function App() {
                     onStartIngestion={handleStartIngestion}
                     isIngestionBusy={isIngestionBusy}
                 />
-
             </div>
 
             <div className="flex-1 flex flex-col">
-
-                <div className="border-b border-slate-800 p-4 font-bold">
-                    Intelli'GED — Reprenez le pouvoir sur vos documents...
+                <div className="border-b border-slate-800 p-4 font-bold flex items-center justify-between gap-4">
+                    <div>Intelli'GED — Reprenez le pouvoir sur vos documents...</div>
+                    <div className="flex items-center gap-2">
+                        {canManageUsers ? (
+                            <button
+                                onClick={() => setActiveView("admin")}
+                                className="px-4 py-2 text-sm font-medium text-amber-200 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 rounded-md transition-colors"
+                            >
+                                Administration
+                            </button>
+                        ) : null}
+                        <button
+                            onClick={logout}
+                            className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-md transition-colors"
+                        >
+                            Se déconnecter
+                        </button>
+                    </div>
                 </div>
 
                 {activeJob && (
@@ -404,21 +454,9 @@ function App() {
                     />
                 )}
 
-                <div className="flex justify-end p-4 border-b border-slate-800">
-                    <button 
-                        onClick={logout}
-                        className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-md transition-colors"
-                    >
-                        Se déconnecter
-                    </button>
-                </div>
-
                 <ChatWindow messages={messages} />
-
                 <ChatInput onSend={handleSend} />
-
             </div>
-
         </div>
     )
 }

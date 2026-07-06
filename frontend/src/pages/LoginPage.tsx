@@ -27,57 +27,57 @@ const LoginPage: React.FC<{ onLoginSuccess: (token: string) => void }> = ({ onLo
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-10 shadow-lg">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
-            Connexion à Intelli-GED
-          </h2>
+    <main className="screen-shell">
+      <section className="screen-panel screen-panel--narrow">
+        <div className="screen-hero" style={{ marginBottom: 20 }}>
+          <span className="screen-kicker">Accès sécurisé</span>
+          <h1 className="screen-title" style={{ fontSize: '2.3rem' }}>Connexion à Intelli-GED</h1>
+          <p className="screen-copy">
+            Accède au chat documentaire et aux écrans d’administration avec un compte autorisé.
+          </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4 rounded-md shadow-sm">
-            <div>
-              <label htmlFor="username" className="sr-only">Nom d'utilisateur</label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                className="relative block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3"
-                placeholder="Nom d'utilisateur"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">Mot de passe</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="relative block w-full rounded-md border-0 py-1.5 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6 px-3"
-                placeholder="Mot de passe"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
 
-          {error && <div className="text-sm text-red-600 font-medium text-center">{error}</div>}
+        <form className="form-grid" onSubmit={handleSubmit}>
+          <label className="field">
+            <span className="field-label">Nom d'utilisateur</span>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              required
+              className="field-input"
+              placeholder="Nom d'utilisateur"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </label>
 
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
-            >
-              {isLoading ? 'Connexion en cours...' : 'Se connecter'}
-            </button>
-          </div>
+          <label className="field">
+            <span className="field-label">Mot de passe</span>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              className="field-input"
+              placeholder="Mot de passe"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+
+          {error ? <div className="status-error">{error}</div> : null}
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="button-primary"
+          >
+            {isLoading ? 'Connexion en cours...' : 'Se connecter'}
+          </button>
         </form>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 
