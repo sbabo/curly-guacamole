@@ -22,7 +22,9 @@ import {
     uploadDocument,
     type DocumentItem,
     type ExtractionField,
+    type GuidedStage,
     type IngestJobSnapshot,
+    type SearchHit,
 } from "../services/api"
 
 import "../styles/access.css"
@@ -31,16 +33,21 @@ type Message = {
     id: string
     role: string
     content: string
+    hits?: SearchHit[]
+    guided?: GuidedStage
+    guessedFields?: Record<string, string>
+    guidedResolved?: boolean
 }
 
 type BootstrapState = "loading" | "first-user" | "login"
 type WorkspaceView = "chat" | "admin"
 
-function createMessage(role: string, content: string): Message {
+function createMessage(role: string, content: string, extra: Partial<Message> = {}): Message {
     return {
         id: crypto.randomUUID(),
         role,
         content,
+        ...extra,
     }
 }
 
@@ -50,10 +57,11 @@ function App() {
     const [canManageUsers, setCanManageUsers] = useState(false)
     const [activeView, setActiveView] = useState<WorkspaceView>("chat")
     const [messages, setMessages] = useState<Message[]>([])
-    const [documents, setDocuments] = useState<DocumentItem[]>([])
+    const [, setDocuments] = useState<DocumentItem[]>([])
     const [selectedTmpPath, setSelectedTmpPath] = useState<string | null>(null)
     const [activeJob, setActiveJob] = useState<IngestJobSnapshot | null>(null)
     const [ingestionAnswer, setIngestionAnswer] = useState("")
+    const [intentionMessage, setIntentionMessage] = useState("")
     const [isIngestionBusy, setIsIngestionBusy] = useState(false)
     const [isEditingDraft, setIsEditingDraft] = useState(false)
     const [draftDetectedType, setDraftDetectedType] = useState("")
@@ -96,6 +104,7 @@ function App() {
             setSelectedTmpPath(null)
             setActiveJob(null)
             setIngestionAnswer("")
+            setIntentionMessage("")
             setIsIngestionBusy(false)
             setIsEditingDraft(false)
             setDraftDetectedType("")
@@ -213,25 +222,19 @@ function App() {
         setDocuments(data)
     }
 
-    async function handleUpload(file: File) {
-        try {
-            const uploaded = await uploadDocument(file)
-
-            setSelectedTmpPath(uploaded.relative_path)
-            await refreshDocuments()
-            setMessages((prev) => [...prev, createMessage("assistant", `Document ajouté en provisoire: ${uploaded.name}`)])
-        } catch (error) {
-            console.error(error)
-        }
-    }
-
-    async function handleStartIngestion() {
-        if (!selectedTmpPath) return
-
+    async function handleUploadAndIngest(file: File, message: string) {
         try {
             setIsIngestionBusy(true)
 
-            const response = await startIngestionFromUpload(selectedTmpPath)
+            const uploaded = await uploadDocument(file)
+            setSelectedTmpPath(uploaded.relative_path)
+            setIntentionMessage(message)
+            await refreshDocuments()
+
+            const displayMessage = message.trim() || `Document ajouté: ${uploaded.name}`
+            setMessages((prev) => [...prev, createMessage("user", displayMessage)])
+
+            const response = await startIngestionFromUpload(uploaded.relative_path)
             setActiveJob(response.job)
             lastJobMessageRef.current = response.job.message
             lastQuestionRef.current = ""
@@ -290,7 +293,7 @@ function App() {
 
             const result = await confirmIngestion(sessionId, {
                 title,
-                describe: `Document ajouté depuis ${selectedTmpPath}`,
+                describe: intentionMessage.trim() || `Document ajouté depuis ${selectedTmpPath}`,
                 meta: {},
                 acl_groups: "c3",
                 acl_level: "1",
@@ -312,6 +315,7 @@ function App() {
                 createMessage("assistant", `Indexation terminée pour ${result.final_relative_path}`),
             ])
 
+            setIntentionMessage("")
             await refreshDocuments()
         } catch (error) {
             console.error(error)
@@ -367,7 +371,35 @@ function App() {
 
         try {
             const response = await sendSearchMessage(message)
-            setMessages((prev) => [...prev, createMessage("assistant", response.reply ?? "Réponse indisponible")])
+            setMessages((prev) => [
+                ...prev,
+                createMessage("assistant", response.reply ?? "Réponse indisponible", {
+                    hits: response.hits,
+                    guided: response.guided ?? undefined,
+                    guessedFields: response.guessed_fields,
+                }),
+            ])
+        } catch (error) {
+            console.error(error)
+        }
+    }
+
+    async function handleGuidedSubmit(messageId: string, docType: string, fieldValues: Record<string, string>) {
+        try {
+            const response = await sendSearchMessage("", docType, fieldValues)
+
+            setMessages((prev) =>
+                prev.map((msg) => (msg.id === messageId ? { ...msg, guidedResolved: true } : msg))
+            )
+
+            setMessages((prev) => [
+                ...prev,
+                createMessage("assistant", response.reply ?? "Réponse indisponible", {
+                    hits: response.hits,
+                    guided: response.guided ?? undefined,
+                    guessedFields: response.guessed_fields,
+                }),
+            ])
         } catch (error) {
             console.error(error)
         }
@@ -402,14 +434,7 @@ function App() {
     return (
         <div className="h-screen flex bg-slate-950 text-white">
             <div className="w-72 border-r border-slate-800 bg-slate-900 overflow-y-auto">
-                <FileTree
-                    documents={documents}
-                    selectedTmpPath={selectedTmpPath}
-                    onUpload={handleUpload}
-                    onSelectTmp={setSelectedTmpPath}
-                    onStartIngestion={handleStartIngestion}
-                    isIngestionBusy={isIngestionBusy}
-                />
+                <FileTree />
             </div>
 
             <div className="flex-1 flex flex-col">
@@ -454,8 +479,8 @@ function App() {
                     />
                 )}
 
-                <ChatWindow messages={messages} />
-                <ChatInput onSend={handleSend} />
+                <ChatWindow messages={messages} onGuidedSubmit={handleGuidedSubmit} />
+                <ChatInput onSend={handleSend} onUploadAndIngest={handleUploadAndIngest} />
             </div>
         </div>
     )

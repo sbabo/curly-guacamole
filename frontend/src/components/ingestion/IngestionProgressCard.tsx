@@ -47,6 +47,7 @@ export default function IngestionProgressCard({
     const [showType, setShowType] = useState(false)
     const [showKeys, setShowKeys] = useState(false)
     const [showFields, setShowFields] = useState(false)
+    const [isCollapsed, setIsCollapsed] = useState(false)
 
     useEffect(() => {
         // Animation séquentielle : type → clés → champs
@@ -62,7 +63,46 @@ export default function IngestionProgressCard({
         }
     }, [activeJob.detected_type])
 
+    useEffect(() => {
+        // Réinitialise le repli à chaque nouveau job d'ingestion.
+        setIsCollapsed(false)
+    }, [activeJob.relative_tmp_path])
+
+    useEffect(() => {
+        // Replie automatiquement la carte une fois l'indexation terminée, pour qu'elle s'intègre au fil de discussion.
+        if (activeJob.status === "indexed") {
+            const timer = setTimeout(() => setIsCollapsed(true), 1200)
+            return () => clearTimeout(timer)
+        }
+    }, [activeJob.status])
+
     const isProcessing = activeJob.status === "processing" || activeJob.status === "queued"
+    const fileName = (activeJob.final_relative_path || activeJob.relative_tmp_path).split("/").pop() ?? activeJob.relative_tmp_path
+
+    if (isCollapsed) {
+        return (
+            <button
+                type="button"
+                onClick={() => setIsCollapsed(false)}
+                className="ingestion-progress-card ingestion-progress-card--collapsed w-full text-left"
+            >
+                <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                        <div className="truncate font-semibold text-white">{fileName}</div>
+                        <div className="truncate text-xs text-amber-100/80">{activeJob.message}</div>
+                        {(activeJob.detected_type || activeJob.final_relative_path) && (
+                            <div className="truncate text-xs text-amber-100/50">
+                                {activeJob.detected_type ? `Type: ${activeJob.detected_type}` : activeJob.final_relative_path}
+                            </div>
+                        )}
+                    </div>
+                    <span className="shrink-0 rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-amber-100">
+                        {activeJob.status}
+                    </span>
+                </div>
+            </button>
+        )
+    }
 
     return (
         <div className={`ingestion-progress-card ${isProcessing ? "processing" : ""}`}>
@@ -85,8 +125,19 @@ export default function IngestionProgressCard({
                         </div>
                     )}
                 </div>
-                <div className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-amber-100">
-                    {activeJob.status}
+                <div className="flex shrink-0 items-center gap-2">
+                    <div className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-amber-100">
+                        {activeJob.status}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setIsCollapsed(true)}
+                        className="rounded-full border border-slate-600 px-2 py-1 text-xs text-slate-300 transition hover:bg-slate-800"
+                        aria-label="Réduire"
+                        title="Réduire"
+                    >
+                        ▾
+                    </button>
                 </div>
             </div>
 

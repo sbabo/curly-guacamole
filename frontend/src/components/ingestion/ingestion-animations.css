@@ -61,6 +61,20 @@
     animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* Version repliée : intégrée au fil de discussion, sur 3 lignes maximum. */
+.ingestion-progress-card--collapsed {
+    margin: 0.5rem 1rem;
+    padding: 0.5rem 0.75rem;
+    max-height: 4.5rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.ingestion-progress-card--collapsed:hover {
+    background: rgba(245, 158, 11, 0.1);
+}
+
 /* Animations d'apparition progressive */
 @keyframes fade-in-slide {
     from {

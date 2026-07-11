@@ -111,7 +111,39 @@ export type IngestDraftUpdatePayload = {
     optional_fields: ExtractionField[]
 }
 
-export async function sendSearchMessage(message: string): Promise<{ reply?: string }> {
+export type ChatSearchStatus = "results" | "no_results" | "guided_fallback"
+
+export type SearchHit = {
+    document_id: number
+    title: string
+    file_path: string
+    describe: string | null
+    distance: number | null
+}
+
+export type GuidedQuestion = {
+    field_name: string
+    is_mandatory: boolean
+}
+
+export type GuidedStage = {
+    doc_types: string[]
+    questions: GuidedQuestion[]
+}
+
+export type ChatSearchResponse = {
+    reply: string
+    status: ChatSearchStatus
+    hits: SearchHit[]
+    guided: GuidedStage | null
+    guessed_fields: Record<string, string>
+}
+
+export async function sendSearchMessage(
+    message: string,
+    docType?: string | null,
+    fieldValues?: Record<string, string>,
+): Promise<ChatSearchResponse> {
 
     const response = await fetch(`${API_URL}/chat/search`, {
         method: "POST",
@@ -119,7 +151,9 @@ export async function sendSearchMessage(message: string): Promise<{ reply?: stri
             "Content-Type": "application/json"
         }),
         body: JSON.stringify({
-            message
+            message,
+            doc_type: docType ?? null,
+            field_values: fieldValues ?? {}
         })
     })
 
