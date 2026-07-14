@@ -170,6 +170,30 @@ export async function fetchDocuments(): Promise<DocumentItem[]> {
     return data.documents ?? []
 }
 
+export async function downloadDocument(relative_path: string): Promise<Blob> {
+    const url = `${API_URL}/documents/raw?relative_path=${encodeURIComponent(relative_path)}`
+
+    const response = await fetch(url, {
+        headers: getHeaders(),
+    })
+
+    if (!response.ok) {
+        const fallback = `Requête échouée (${response.status})`
+        let message = fallback
+
+        try {
+            const payload = await response.json()
+            message = payload.detail ?? payload.message ?? fallback
+        } catch {
+            message = fallback
+        }
+
+        throw new Error(message)
+    }
+
+    return response.blob()
+}
+
 export async function uploadDocument(file: File): Promise<DocumentItem> {
 
     const formData = new FormData()

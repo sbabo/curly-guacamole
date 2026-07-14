@@ -20,7 +20,6 @@ import {
     subscribeIngestionEvents,
     updateIngestionDraft,
     uploadDocument,
-    type DocumentItem,
     type ExtractionField,
     type GuidedStage,
     type IngestJobSnapshot,
@@ -57,7 +56,7 @@ function App() {
     const [canManageUsers, setCanManageUsers] = useState(false)
     const [activeView, setActiveView] = useState<WorkspaceView>("chat")
     const [messages, setMessages] = useState<Message[]>([])
-    const [, setDocuments] = useState<DocumentItem[]>([])
+    const [documents, setDocuments] = useState<SearchHit[] | undefined>(undefined)
     const [selectedTmpPath, setSelectedTmpPath] = useState<string | null>(null)
     const [activeJob, setActiveJob] = useState<IngestJobSnapshot | null>(null)
     const [ingestionAnswer, setIngestionAnswer] = useState("")
@@ -100,7 +99,7 @@ function App() {
             setCanManageUsers(false)
             setActiveView("chat")
             setMessages([])
-            setDocuments([])
+            setDocuments(undefined)
             setSelectedTmpPath(null)
             setActiveJob(null)
             setIngestionAnswer("")
@@ -150,16 +149,8 @@ function App() {
             return
         }
 
-        async function init() {
-            try {
-                const data = await fetchDocuments()
-                setDocuments(data)
-            } catch (error) {
-                console.error(error)
-            }
-        }
-
-        void init()
+        // ne pas charger les documents par défaut ici — ils seront définis
+        // uniquement après une recherche effectuée (via `handleSend`).
     }, [token])
 
     useEffect(() => {
@@ -218,8 +209,10 @@ function App() {
     }, [activeJob?.job_id])
 
     async function refreshDocuments() {
-        const data = await fetchDocuments()
-        setDocuments(data)
+        // Récupère la liste complète des fichiers stockés côté serveur mais
+        // ne la publie pas dans la colonne de recherche. La colonne de gauche
+        // affiche uniquement les résultats d'une recherche (state `documents`).
+        await fetchDocuments()
     }
 
     async function handleUploadAndIngest(file: File, message: string) {
@@ -371,6 +364,9 @@ function App() {
 
         try {
             const response = await sendSearchMessage(message)
+            // Mettre à jour la colonne de gauche avec les hits de la recherche.
+            setDocuments(response.hits ?? [])
+
             setMessages((prev) => [
                 ...prev,
                 createMessage("assistant", response.reply ?? "Réponse indisponible", {
@@ -387,6 +383,9 @@ function App() {
     async function handleGuidedSubmit(messageId: string, docType: string, fieldValues: Record<string, string>) {
         try {
             const response = await sendSearchMessage("", docType, fieldValues)
+
+            // Mettre à jour la colonne de gauche avec les hits de la recherche guidée
+            setDocuments(response.hits ?? [])
 
             setMessages((prev) =>
                 prev.map((msg) => (msg.id === messageId ? { ...msg, guidedResolved: true } : msg))
@@ -434,7 +433,7 @@ function App() {
     return (
         <div className="h-screen flex bg-slate-950 text-white">
             <div className="w-72 border-r border-slate-800 bg-slate-900 overflow-y-auto">
-                <FileTree />
+                <FileTree hits={documents} />
             </div>
 
             <div className="flex-1 flex flex-col">
