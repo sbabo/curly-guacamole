@@ -31,8 +31,8 @@ function FirstUserPage({ onCreated }: FirstUserPageProps) {
             })
             setMessage("Le premier super-administrateur a été créé. Tu peux maintenant te connecter.")
             onCreated()
-        } catch (exception: any) {
-            setError(exception.message || "Impossible de créer le premier utilisateur")
+        } catch (exception: unknown) {
+            setError(exception instanceof Error ? exception.message : "Impossible de créer le premier utilisateur")
         } finally {
             setIsSubmitting(false)
         }

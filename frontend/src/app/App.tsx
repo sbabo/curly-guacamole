@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import ChatInput from "../components/chat/ChatInput"
 import ChatWindow from "../components/chat/ChatWindow"
@@ -70,6 +70,29 @@ function App() {
     const lastQuestionRef = useRef("")
     const cleanupStreamRef = useRef<(() => void) | null>(null)
 
+    const resetWorkspace = useCallback(() => {
+        setCanManageUsers(false)
+        setActiveView("chat")
+        setMessages([])
+        setDocuments(undefined)
+        setSelectedTmpPath(null)
+        setActiveJob(null)
+        setIngestionAnswer("")
+        setIntentionMessage("")
+        setIsIngestionBusy(false)
+        setIsEditingDraft(false)
+        setDraftDetectedType("")
+        setDraftMandatoryFields([])
+        setDraftOptionalFields([])
+        cleanupStreamRef.current?.()
+        cleanupStreamRef.current = null
+    }, [])
+
+    const handleLogout = useCallback(() => {
+        resetWorkspace()
+        logout()
+    }, [logout, resetWorkspace])
+
     useEffect(() => {
         let isMounted = true
 
@@ -96,19 +119,6 @@ function App() {
 
     useEffect(() => {
         if (!token) {
-            setCanManageUsers(false)
-            setActiveView("chat")
-            setMessages([])
-            setDocuments(undefined)
-            setSelectedTmpPath(null)
-            setActiveJob(null)
-            setIngestionAnswer("")
-            setIntentionMessage("")
-            setIsIngestionBusy(false)
-            setIsEditingDraft(false)
-            setDraftDetectedType("")
-            setDraftMandatoryFields([])
-            setDraftOptionalFields([])
             cleanupStreamRef.current?.()
             cleanupStreamRef.current = null
             return
@@ -130,9 +140,7 @@ function App() {
             } catch (error) {
                 console.error(error)
                 if (isMounted) {
-                    logout()
-                    setCanManageUsers(false)
-                    setActiveView("chat")
+                    handleLogout()
                 }
             }
         }
@@ -142,7 +150,7 @@ function App() {
         return () => {
             isMounted = false
         }
-    }, [logout, token])
+    }, [handleLogout, token])
 
     useEffect(() => {
         if (!token) {
@@ -154,17 +162,19 @@ function App() {
     }, [token])
 
     useEffect(() => {
-        if (!activeJob) {
-            setDraftDetectedType("")
-            setDraftMandatoryFields([])
-            setDraftOptionalFields([])
-            return
-        }
+        queueMicrotask(() => {
+            if (!activeJob) {
+                setDraftDetectedType("")
+                setDraftMandatoryFields([])
+                setDraftOptionalFields([])
+                return
+            }
 
-        setDraftDetectedType(activeJob.detected_type ?? "")
-        setDraftMandatoryFields(activeJob.mandatory_fields.map((field) => ({ ...field })))
-        setDraftOptionalFields(activeJob.optional_fields.map((field) => ({ ...field })))
-    }, [activeJob?.detected_type, activeJob?.mandatory_fields, activeJob?.optional_fields])
+            setDraftDetectedType(activeJob.detected_type ?? "")
+            setDraftMandatoryFields(activeJob.mandatory_fields.map((field) => ({ ...field })))
+            setDraftOptionalFields(activeJob.optional_fields.map((field) => ({ ...field })))
+        })
+    }, [activeJob])
 
     useEffect(() => {
         return () => {
@@ -427,7 +437,7 @@ function App() {
     }
 
     if (activeView === "admin" && canManageUsers) {
-        return <AdminUsersPage onBack={() => setActiveView("chat")} onLogout={logout} />
+        return <AdminUsersPage onBack={() => setActiveView("chat")} onLogout={handleLogout} />
     }
 
     return (
@@ -449,7 +459,7 @@ function App() {
                             </button>
                         ) : null}
                         <button
-                            onClick={logout}
+                            onClick={handleLogout}
                             className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-md transition-colors"
                         >
                             Se déconnecter
@@ -459,6 +469,7 @@ function App() {
 
                 {activeJob && (
                     <IngestionProgressCard
+                        key={activeJob.relative_tmp_path}
                         activeJob={activeJob}
                         ingestionAnswer={ingestionAnswer}
                         isIngestionBusy={isIngestionBusy}

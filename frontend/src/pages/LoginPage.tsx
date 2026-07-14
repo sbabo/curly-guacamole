@@ -19,8 +19,8 @@ const LoginPage: React.FC<{ onLoginSuccess: (token: string) => void }> = ({ onLo
       } else {
         setError("Réponse invalide du serveur.");
       }
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la connexion');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la connexion');
     } finally {
       setIsLoading(false);
     }

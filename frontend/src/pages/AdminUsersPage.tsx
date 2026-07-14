@@ -117,15 +117,19 @@ function AdminUsersPage({ onBack, onLogout }: AdminUsersPageProps) {
 
             setCatalog(catalogData)
             setUsers(usersData)
-        } catch (exception: any) {
-            setError(exception.message || "Impossible de charger l'administration")
+        } catch (exception: unknown) {
+            setError(exception instanceof Error ? exception.message : "Impossible de charger l'administration")
         } finally {
             setIsLoading(false)
         }
     }
 
     useEffect(() => {
-        void reload()
+        const timer = window.setTimeout(() => {
+            void reload()
+        }, 0)
+
+        return () => window.clearTimeout(timer)
     }, [])
 
     function openCreateModal() {
@@ -224,8 +228,8 @@ function AdminUsersPage({ onBack, onLogout }: AdminUsersPageProps) {
 
             closeModal()
             await reload()
-        } catch (exception: any) {
-            setError(exception.message || "Impossible d'enregistrer l'utilisateur")
+        } catch (exception: unknown) {
+            setError(exception instanceof Error ? exception.message : "Impossible d'enregistrer l'utilisateur")
         } finally {
             setIsSubmitting(false)
         }
@@ -245,8 +249,8 @@ function AdminUsersPage({ onBack, onLogout }: AdminUsersPageProps) {
             await deleteAdminUser(user.id)
             setNotice(`L'utilisateur ${user.username} a été supprimé.`)
             await reload()
-        } catch (exception: any) {
-            setError(exception.message || "Impossible de supprimer l'utilisateur")
+        } catch (exception: unknown) {
+            setError(exception instanceof Error ? exception.message : "Impossible de supprimer l'utilisateur")
         } finally {
             setIsSubmitting(false)
         }

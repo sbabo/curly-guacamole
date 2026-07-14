@@ -22,7 +22,7 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
             const payload = await response.json() as { detail?: string; message?: string }
             message = payload.detail ?? payload.message ?? fallback
         } catch {
-            message = fallback
+            // La réponse peut ne pas contenir de JSON exploitable.
         }
 
         throw new Error(message)

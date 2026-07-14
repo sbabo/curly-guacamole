@@ -20,7 +20,7 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
             const payload = await response.json()
             message = payload.detail ?? payload.message ?? fallback
         } catch {
-            message = fallback
+            // La réponse peut ne pas contenir de JSON exploitable.
         }
 
         throw new Error(message)
@@ -185,7 +185,7 @@ export async function downloadDocument(relative_path: string): Promise<Blob> {
             const payload = await response.json()
             message = payload.detail ?? payload.message ?? fallback
         } catch {
-            message = fallback
+            // La réponse peut ne pas contenir de JSON exploitable.
         }
 
         throw new Error(message)

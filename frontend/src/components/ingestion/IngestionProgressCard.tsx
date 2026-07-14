@@ -64,11 +64,6 @@ export default function IngestionProgressCard({
     }, [activeJob.detected_type])
 
     useEffect(() => {
-        // Réinitialise le repli à chaque nouveau job d'ingestion.
-        setIsCollapsed(false)
-    }, [activeJob.relative_tmp_path])
-
-    useEffect(() => {
         // Replie automatiquement la carte une fois l'indexation terminée, pour qu'elle s'intègre au fil de discussion.
         if (activeJob.status === "indexed") {
             const timer = setTimeout(() => setIsCollapsed(true), 1200)
